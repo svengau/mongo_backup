@@ -1,0 +1,83 @@
+# .github/workflows/mongo-backup.yml
+name: MongoDB Backup and Release
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # configured by GitHub Actions
+
+on:
+  workflow_call:
+    inputs:
+      type:
+        description: "Backup type (hourly, daily, monthly, yearly)"
+        required: true
+        type: string
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      if: ${{ env.DATABASE_URL }}
+      uses: actions/checkout@v2
+
+    - name: Debug
+      if: ${{ env.DATABASE_URL }}
+      env:
+        TAG_NAME: ${{ inputs.tag_name }}
+      run: echo "Tag name $TAG_NAME"
+
+    - name: Install MongoDB tools
+      if: ${{ env.DATABASE_URL }}
+      run: |
+        wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+        echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+        sudo apt update
+        sudo apt install -y mongodb-database-tools
+
+    - name: Run MongoDB dump into folder
+      if: ${{ env.DATABASE_URL }}
+      run: |
+        mkdir -p backup_folder
+        mongodump --uri "$DATABASE_URL" --out=backup_folder
+
+    - name: Zip the backup folder
+      if: ${{ env.DATABASE_URL }}
+      run: |
+        zip -r backup.zip backup_folder
+
+    - name: Create or Update GitHub Release
+      if: ${{ env.DATABASE_URL }}
+      env:
+        TYPE: ${{ inputs.type }}
+      run: |
+        case $TYPE in
+                "hourly")
+                        export TAG_NAME="backup-hour-$(date +'%H')H"
+                        ;;
+                "daily")
+                        export TAG_NAME="backup-day-$(date +'%w_%A')"
+                        ;;
+                "weekly")
+                        export TAG_NAME="backup-week-$(date +'%V')"
+                        ;;
+                "monthly")
+                        export TAG_NAME="backup-month-$(date +'%m_%B')"
+                        ;;
+                "yearly")
+                        export TAG_NAME="backup-year-$(date +'%Y')"
+                        ;;
+                "ondemand")
+                        export TAG_NAME="backup-ondemand-$(date +'%Y-%m-%d_%H.%M')"
+                        ;;
+        esac
+        if gh release view "$TAG_NAME" > /dev/null 2>&1; then
+          echo "Release $TAG_NAME exists, updating asset..."
+          gh release upload "$TAG_NAME" backup.zip --clobber 
+          gh release edit "$TAG_NAME" --title "Backup $(date +'%Y-%m-%d %H:%M')" --notes "Automated backup release."
+        else
+          echo "Release $TAG_NAME does not exist, creating new release..."
+          gh release create "$TAG_NAME" backup.zip --title "Backup $(date +'%Y-%m-%d %H:%M')" --notes "Automated backup release."
+        fi
+

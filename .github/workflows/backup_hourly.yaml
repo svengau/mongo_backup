@@ -1,0 +1,20 @@
+name: MongoDB Backup / Hourly
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '5 * * * *' # Run every hour
+  workflow_dispatch: # Allow manual trigger
+  # push:
+  #   branches:
+  #     - main
+
+jobs:
+  call-backup:
+    uses: .github/workflows/_mongo_backup.yml
+    secrets: inherit
+    with:
+      type: "hourly"
+

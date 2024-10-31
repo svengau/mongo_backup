@@ -1,0 +1,14 @@
+name: MongoDB Backup / OnDemand
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  call-backup:
+    uses: .github/workflows/_mongo_backup.yml
+    secrets: inherit
+    with:
+      type: "ondemand"
