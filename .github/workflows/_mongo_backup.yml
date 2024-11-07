@@ -1,4 +1,3 @@
-# .github/workflows/mongo-backup.yml
 name: MongoDB Backup and Release
 
 env:
