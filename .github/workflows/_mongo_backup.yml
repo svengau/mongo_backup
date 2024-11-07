@@ -75,9 +75,9 @@ jobs:
         if gh release view "$TAG_NAME" > /dev/null 2>&1; then
           echo "Release $TAG_NAME exists, updating asset..."
           gh release upload "$TAG_NAME" backup.zip --clobber 
-          gh release edit "$TAG_NAME" --title "Backup $(date +'%Y-%m-%d %H:%M')" --notes "Automated backup release."
+          gh release edit "$TAG_NAME" --title "$TAG_NAME" --notes "Backup $(date +'%Y-%m-%d %H:%M')"
         else
           echo "Release $TAG_NAME does not exist, creating new release..."
-          gh release create "$TAG_NAME" backup.zip --title "Backup $(date +'%Y-%m-%d %H:%M')" --notes "Automated backup release."
+          gh release create "$TAG_NAME" backup.zip --title "$TAG_NAME" --notes "Backup $(date +'%Y-%m-%d %H:%M')"
         fi
 
